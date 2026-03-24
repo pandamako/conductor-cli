@@ -97,7 +97,16 @@ func WorktreeList(dir string) ([]Worktree, error) {
 	return ParsePorcelainOutput(output), nil
 }
 
+func BranchExists(dir, branch string) bool {
+	_, err := run(dir, "rev-parse", "--verify", "refs/heads/"+branch)
+	return err == nil
+}
+
 func WorktreeAdd(dir, path, branch string) error {
+	if BranchExists(dir, branch) {
+		_, err := run(dir, "worktree", "add", path, branch)
+		return err
+	}
 	_, err := run(dir, "worktree", "add", path, "-b", branch)
 	return err
 }
