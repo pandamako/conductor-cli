@@ -25,6 +25,7 @@ func main() {
 	parser.AddCommand("create", "Create worktree", "Create a new worktree with a new branch", &CreateCommand{})
 	parser.AddCommand("list", "List worktrees", "List worktrees for current or all repositories", &ListCommand{})
 	parser.AddCommand("archive", "Archive worktree", "Remove a worktree (branch is preserved)", &ArchiveCommand{})
+	parser.AddCommand("home", "Main worktree path", "Print the path to the main worktree of the current repository", &HomeCommand{})
 
 	if _, err := parser.Parse(); err != nil {
 		if flagsErr, ok := err.(*flags.Error); ok && flagsErr.Type == flags.ErrHelp {
