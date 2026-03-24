@@ -73,7 +73,7 @@ func (c *CreateCommand) execute(dir, branchName string) (string, error) {
 		if shell == "" {
 			shell = "sh"
 		}
-		cmd := exec.Command(shell, "-l", wtSetupScript)
+		cmd := exec.Command(shell, "-li", wtSetupScript)
 		cmd.Dir = wtPath
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
