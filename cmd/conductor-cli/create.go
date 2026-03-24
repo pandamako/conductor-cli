@@ -69,7 +69,11 @@ func (c *CreateCommand) execute(dir, branchName string) (string, error) {
 	// Run setup script if it exists
 	wtSetupScript := filepath.Join(wtPath, ".conductor-cli", "setup")
 	if info, err := os.Stat(wtSetupScript); err == nil && info.Mode()&0111 != 0 {
-		cmd := exec.Command(wtSetupScript)
+		shell := os.Getenv("SHELL")
+		if shell == "" {
+			shell = "sh"
+		}
+		cmd := exec.Command(shell, "-l", wtSetupScript)
 		cmd.Dir = wtPath
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
