@@ -259,9 +259,8 @@ func TestCreateCommandWithSlash(t *testing.T) {
 	if _, err := os.Stat(wtPath); os.IsNotExist(err) {
 		t.Error("worktree directory not created")
 	}
-	dir := filepath.Base(wtPath)
-	if dir != "feature%2Flogin" {
-		t.Errorf("directory name = %q, want %q", dir, "feature%2Flogin")
+	if !strings.HasSuffix(wtPath, filepath.Join("feature", "login")) {
+		t.Errorf("worktree path %q should end with feature/login", wtPath)
 	}
 }
 
