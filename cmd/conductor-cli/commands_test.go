@@ -411,3 +411,112 @@ func TestListAllDeletedRepo(t *testing.T) {
 		t.Error("deleted repo should still be in config")
 	}
 }
+
+func TestArchiveCommand(t *testing.T) {
+	withConfig(t)
+	repo := setupTestRepo(t)
+
+	initCmd := &InitCommand{}
+	if err := initCmd.execute(repo); err != nil {
+		t.Fatalf("init failed: %v", err)
+	}
+
+	createCmd := &CreateCommand{}
+	wtPath, err := createCmd.execute(repo, "to-archive")
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	if _, err := os.Stat(wtPath); os.IsNotExist(err) {
+		t.Fatal("worktree should exist before archive")
+	}
+
+	archiveCmd := &ArchiveCommand{}
+	if err := archiveCmd.execute(repo, "to-archive"); err != nil {
+		t.Fatalf("archive failed: %v", err)
+	}
+
+	if _, err := os.Stat(wtPath); !os.IsNotExist(err) {
+		t.Error("worktree directory should be removed after archive")
+	}
+
+	// Branch should still exist
+	cmd := exec.Command("git", "branch", "--list", "to-archive")
+	cmd.Dir = repo
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("git branch --list failed: %v", err)
+	}
+	if !strings.Contains(string(out), "to-archive") {
+		t.Error("branch should still exist after archive")
+	}
+}
+
+func TestArchiveCommandNotFound(t *testing.T) {
+	withConfig(t)
+	repo := setupTestRepo(t)
+
+	initCmd := &InitCommand{}
+	if err := initCmd.execute(repo); err != nil {
+		t.Fatalf("init failed: %v", err)
+	}
+
+	archiveCmd := &ArchiveCommand{}
+	err := archiveCmd.execute(repo, "nonexistent")
+	if err == nil {
+		t.Error("expected error for nonexistent branch")
+	}
+	if !strings.Contains(err.Error(), "no worktree found") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestArchiveCommandFromInsideTarget(t *testing.T) {
+	withConfig(t)
+	repo := setupTestRepo(t)
+
+	initCmd := &InitCommand{}
+	if err := initCmd.execute(repo); err != nil {
+		t.Fatalf("init failed: %v", err)
+	}
+
+	createCmd := &CreateCommand{}
+	wtPath, err := createCmd.execute(repo, "inside-test")
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	archiveCmd := &ArchiveCommand{}
+	err = archiveCmd.execute(wtPath, "inside-test")
+	if err == nil {
+		t.Error("expected error when archiving from inside target worktree")
+	}
+	if !strings.Contains(err.Error(), "cannot archive") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestArchiveCommandDeletedDirectory(t *testing.T) {
+	withConfig(t)
+	repo := setupTestRepo(t)
+
+	initCmd := &InitCommand{}
+	if err := initCmd.execute(repo); err != nil {
+		t.Fatalf("init failed: %v", err)
+	}
+
+	createCmd := &CreateCommand{}
+	wtPath, err := createCmd.execute(repo, "deleted-wt")
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	// Manually delete the worktree directory
+	os.RemoveAll(wtPath)
+
+	archiveCmd := &ArchiveCommand{}
+	err = archiveCmd.execute(repo, "deleted-wt")
+	if err != nil {
+		t.Fatalf("archive of deleted worktree should succeed: %v", err)
+	}
+}
