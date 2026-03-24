@@ -4,9 +4,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"conductor-cli/internal/config"
+	"conductor-cli/internal/git"
 )
 
 // setupTestRepo creates a temp git repo with an initial commit.
@@ -154,4 +156,146 @@ func TestInitCommandCustomName(t *testing.T) {
 		}
 	}
 	t.Error("custom name not found in config")
+}
+
+func TestCreateCommand(t *testing.T) {
+	withConfig(t)
+	repo := setupTestRepo(t)
+
+	initCmd := &InitCommand{}
+	if err := initCmd.execute(repo); err != nil {
+		t.Fatalf("init failed: %v", err)
+	}
+
+	createCmd := &CreateCommand{}
+	wtPath, err := createCmd.execute(repo, "test-branch")
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	if _, err := os.Stat(wtPath); os.IsNotExist(err) {
+		t.Error("worktree directory not created")
+	}
+
+	worktrees, err := git.WorktreeList(repo)
+	if err != nil {
+		t.Fatalf("WorktreeList() error = %v", err)
+	}
+	found := false
+	for _, wt := range worktrees {
+		if wt.Branch == "test-branch" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("branch 'test-branch' not found in worktree list")
+	}
+}
+
+func TestCreateCommandWithSlash(t *testing.T) {
+	withConfig(t)
+	repo := setupTestRepo(t)
+
+	initCmd := &InitCommand{}
+	if err := initCmd.execute(repo); err != nil {
+		t.Fatalf("init failed: %v", err)
+	}
+
+	createCmd := &CreateCommand{}
+	wtPath, err := createCmd.execute(repo, "feature/login")
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	if _, err := os.Stat(wtPath); os.IsNotExist(err) {
+		t.Error("worktree directory not created")
+	}
+	dir := filepath.Base(wtPath)
+	if dir != "feature%2Flogin" {
+		t.Errorf("directory name = %q, want %q", dir, "feature%2Flogin")
+	}
+}
+
+func TestCreateCommandNotRegistered(t *testing.T) {
+	withConfig(t)
+	repo := setupTestRepo(t)
+
+	createCmd := &CreateCommand{}
+	_, err := createCmd.execute(repo, "test-branch")
+	if err == nil {
+		t.Error("expected error for unregistered repo")
+	}
+	if !strings.Contains(err.Error(), "not initialized") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestCreateCommandWithSetupScript(t *testing.T) {
+	withConfig(t)
+	repo := setupTestRepo(t)
+
+	initCmd := &InitCommand{}
+	if err := initCmd.execute(repo); err != nil {
+		t.Fatalf("init failed: %v", err)
+	}
+
+	setupScript := filepath.Join(repo, ".conductor-cli", "setup")
+	os.WriteFile(setupScript, []byte("#!/bin/sh\ntouch setup-was-run\n"), 0755)
+
+	createCmd := &CreateCommand{}
+	wtPath, err := createCmd.execute(repo, "with-setup")
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	marker := filepath.Join(wtPath, "setup-was-run")
+	if _, err := os.Stat(marker); os.IsNotExist(err) {
+		t.Error("setup script was not executed in worktree directory")
+	}
+}
+
+func TestCreateCommandSetupNotExecutable(t *testing.T) {
+	withConfig(t)
+	repo := setupTestRepo(t)
+
+	initCmd := &InitCommand{}
+	if err := initCmd.execute(repo); err != nil {
+		t.Fatalf("init failed: %v", err)
+	}
+
+	setupScript := filepath.Join(repo, ".conductor-cli", "setup")
+	os.WriteFile(setupScript, []byte("#!/bin/sh\necho hi\n"), 0644)
+
+	createCmd := &CreateCommand{}
+	_, err := createCmd.execute(repo, "no-exec")
+	if err == nil {
+		t.Error("expected error for non-executable setup script")
+	}
+	if !strings.Contains(err.Error(), "not executable") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestCreateCommandSetupScriptFails(t *testing.T) {
+	withConfig(t)
+	repo := setupTestRepo(t)
+
+	initCmd := &InitCommand{}
+	if err := initCmd.execute(repo); err != nil {
+		t.Fatalf("init failed: %v", err)
+	}
+
+	setupScript := filepath.Join(repo, ".conductor-cli", "setup")
+	os.WriteFile(setupScript, []byte("#!/bin/sh\nexit 1\n"), 0755)
+
+	createCmd := &CreateCommand{}
+	wtPath, err := createCmd.execute(repo, "fail-setup")
+	// Should NOT return an error — worktree was created, setup failure is a warning
+	if err != nil {
+		t.Fatalf("create should succeed even if setup fails: %v", err)
+	}
+	if _, err := os.Stat(wtPath); os.IsNotExist(err) {
+		t.Error("worktree should exist even if setup script failed")
+	}
 }

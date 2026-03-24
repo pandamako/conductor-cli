@@ -22,6 +22,7 @@ func main() {
 	parser := flags.NewParser(nil, flags.Default)
 
 	parser.AddCommand("init", "Register repository", "Register the current git repository with conductor-cli", &InitCommand{})
+	parser.AddCommand("create", "Create worktree", "Create a new worktree with a new branch", &CreateCommand{})
 
 	if _, err := parser.Parse(); err != nil {
 		if flagsErr, ok := err.(*flags.Error); ok && flagsErr.Type == flags.ErrHelp {
