@@ -21,6 +21,8 @@ var configPath = func() string {
 func main() {
 	parser := flags.NewParser(nil, flags.Default)
 
+	parser.AddCommand("init", "Register repository", "Register the current git repository with conductor-cli", &InitCommand{})
+
 	if _, err := parser.Parse(); err != nil {
 		if flagsErr, ok := err.(*flags.Error); ok && flagsErr.Type == flags.ErrHelp {
 			os.Exit(0)
