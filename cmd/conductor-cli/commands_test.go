@@ -91,6 +91,42 @@ func TestInitCommand(t *testing.T) {
 	if _, err := os.Stat(conductorDir); os.IsNotExist(err) {
 		t.Error(".conductor-cli/ directory not created")
 	}
+
+	// Verify setup script was created with correct permissions
+	setupScript := filepath.Join(repo, ".conductor-cli", "setup")
+	info, err := os.Stat(setupScript)
+	if os.IsNotExist(err) {
+		t.Error("setup script not created")
+	} else if err != nil {
+		t.Fatalf("stat setup script: %v", err)
+	} else if info.Mode()&0111 == 0 {
+		t.Error("setup script should be executable")
+	}
+}
+
+func TestInitCommandDoesNotOverwriteSetupScript(t *testing.T) {
+	withConfig(t)
+	repo := setupTestRepo(t)
+
+	// Create a custom setup script before init
+	conductorDir := filepath.Join(repo, ".conductor-cli")
+	os.MkdirAll(conductorDir, 0755)
+	customContent := "#!/bin/sh\necho custom\n"
+	os.WriteFile(filepath.Join(conductorDir, "setup"), []byte(customContent), 0755)
+
+	cmd := &InitCommand{}
+	if err := cmd.execute(repo); err != nil {
+		t.Fatalf("init failed: %v", err)
+	}
+
+	// Verify custom content was preserved
+	data, err := os.ReadFile(filepath.Join(conductorDir, "setup"))
+	if err != nil {
+		t.Fatalf("read setup script: %v", err)
+	}
+	if string(data) != customContent {
+		t.Error("init should not overwrite existing setup script")
+	}
 }
 
 func TestInitCommandNotGitRepo(t *testing.T) {
@@ -278,11 +314,12 @@ func TestCreateCommandSetupNotExecutable(t *testing.T) {
 
 	setupScript := filepath.Join(repo, ".conductor-cli", "setup")
 	os.WriteFile(setupScript, []byte("#!/bin/sh\necho hi\n"), 0644)
+	os.Chmod(setupScript, 0644) // explicit chmod since WriteFile doesn't change perms on existing file
 
 	createCmd := &CreateCommand{}
 	_, err := createCmd.execute(repo, "no-exec")
 	if err == nil {
-		t.Error("expected error for non-executable setup script")
+		t.Fatal("expected error for non-executable setup script")
 	}
 	if !strings.Contains(err.Error(), "not executable") {
 		t.Errorf("unexpected error: %v", err)

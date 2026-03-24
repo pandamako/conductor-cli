@@ -60,6 +60,25 @@ func (c *InitCommand) execute(dir string) error {
 		return err
 	}
 
+	// Create setup script template if it doesn't exist
+	setupScript := filepath.Join(conductorDir, "setup")
+	if _, err := os.Stat(setupScript); os.IsNotExist(err) {
+		template := `#!/bin/sh
+# This script runs automatically after creating a new worktree.
+# Working directory is set to the new worktree root.
+#
+# Examples:
+#   npm install
+#   cp .env.example .env
+#   make setup
+`
+		if err := os.WriteFile(setupScript, []byte(template), 0755); err != nil {
+			return err
+		}
+		fmt.Printf("Setup script created at .conductor-cli/setup\n")
+		fmt.Printf("Edit it to define commands that run after worktree creation.\n")
+	}
+
 	fmt.Printf("repository '%s' registered\n", name)
 	return nil
 }
