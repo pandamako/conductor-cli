@@ -31,9 +31,20 @@ func setupTestRepo(t *testing.T) string {
 }
 
 // withConfig overrides configPath for a test and returns the temp config path.
+// Pre-seeds config with a temp WorktreesBasePath so tests don't pollute ~/.conductor-cli/.
+// Tests using this helper must NOT call t.Parallel(), as configPath is shared.
 func withConfig(t *testing.T) string {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), "config.json")
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "config.json")
+	// Pre-seed with temp worktrees base path
+	cfg := &config.GlobalConfig{
+		WorktreesBasePath: filepath.Join(tmpDir, "worktrees"),
+		Repositories:      map[string]config.RepoConfig{},
+	}
+	if err := config.Save(path, cfg); err != nil {
+		t.Fatalf("failed to seed config: %v", err)
+	}
 	orig := configPath
 	configPath = path
 	t.Cleanup(func() { configPath = orig })
