@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -308,5 +309,105 @@ func TestCreateCommandSetupScriptFails(t *testing.T) {
 	}
 	if _, err := os.Stat(wtPath); os.IsNotExist(err) {
 		t.Error("worktree should exist even if setup script failed")
+	}
+}
+
+func TestListCommand(t *testing.T) {
+	withConfig(t)
+	repo := setupTestRepo(t)
+
+	initCmd := &InitCommand{}
+	if err := initCmd.execute(repo); err != nil {
+		t.Fatalf("init failed: %v", err)
+	}
+
+	createCmd := &CreateCommand{}
+	if _, err := createCmd.execute(repo, "feat-1"); err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	var buf bytes.Buffer
+	listCmd := &ListCommand{}
+	if err := listCmd.execute(repo, &buf); err != nil {
+		t.Fatalf("list failed: %v", err)
+	}
+
+	if !strings.Contains(buf.String(), "feat-1") {
+		t.Errorf("list output missing 'feat-1': %s", buf.String())
+	}
+}
+
+func TestListCommandNotRegistered(t *testing.T) {
+	withConfig(t)
+	repo := setupTestRepo(t)
+
+	var buf bytes.Buffer
+	listCmd := &ListCommand{}
+	err := listCmd.execute(repo, &buf)
+	if err == nil {
+		t.Error("expected error for unregistered repo")
+	}
+	if !strings.Contains(err.Error(), "not initialized") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestListAllCommand(t *testing.T) {
+	withConfig(t)
+	repo := setupTestRepo(t)
+
+	initCmd := &InitCommand{}
+	if err := initCmd.execute(repo); err != nil {
+		t.Fatalf("init failed: %v", err)
+	}
+
+	var buf bytes.Buffer
+	listCmd := &ListCommand{All: true}
+	if err := listCmd.executeAll(&buf); err != nil {
+		t.Fatalf("list --all failed: %v", err)
+	}
+
+	repoName := filepath.Base(repo)
+	if !strings.Contains(buf.String(), repoName) {
+		t.Errorf("list --all output missing repo name %q: %s", repoName, buf.String())
+	}
+}
+
+func TestListAllNoRepos(t *testing.T) {
+	withConfig(t)
+
+	var buf bytes.Buffer
+	listCmd := &ListCommand{All: true}
+	if err := listCmd.executeAll(&buf); err != nil {
+		t.Fatalf("list --all failed: %v", err)
+	}
+
+	if !strings.Contains(buf.String(), "no repositories registered") {
+		t.Errorf("expected 'no repositories registered' message, got: %s", buf.String())
+	}
+}
+
+func TestListAllDeletedRepo(t *testing.T) {
+	cfgPath := withConfig(t)
+	repo := setupTestRepo(t)
+
+	initCmd := &InitCommand{}
+	if err := initCmd.execute(repo); err != nil {
+		t.Fatalf("init failed: %v", err)
+	}
+
+	// Delete the repo directory
+	os.RemoveAll(repo)
+
+	var buf bytes.Buffer
+	listCmd := &ListCommand{All: true}
+	if err := listCmd.executeAll(&buf); err != nil {
+		t.Fatalf("list --all should not fail for deleted repo: %v", err)
+	}
+
+	// Config should still have the repo
+	cfg, _ := config.Load(cfgPath)
+	if len(cfg.Repositories) != 1 {
+		t.Error("deleted repo should still be in config")
 	}
 }
