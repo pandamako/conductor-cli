@@ -103,7 +103,7 @@ func WorktreeAdd(dir, path, branch string) error {
 }
 
 func WorktreeRemove(dir, path string) error {
-	_, err := run(dir, "worktree", "remove", path)
+	_, err := run(dir, "worktree", "remove", "--force", path)
 	return err
 }
 
