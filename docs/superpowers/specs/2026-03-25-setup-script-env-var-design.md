@@ -29,10 +29,10 @@ cp "$CONDUCTOR_MAIN_WORKTREE/cmd/marvinsrv/.env.local" ./cmd/marvinsrv/
 Before calling `cmd.Run()`, set the environment:
 
 ```go
-cmd.Env = append(os.Environ(), "CONDUCTOR_MAIN_WORKTREE="+mainWorktree)
+cmd.Env = append(os.Environ(), "CONDUCTOR_MAIN_WORKTREE="+repoRoot)
 ```
 
-`mainWorktree` is already resolved on line 33 via `git.ResolveMainWorktree()`. The variable is scoped to the child process and does not affect the caller's environment.
+`repoRoot` is already resolved at the top of `execute()` via `git.ResolveMainWorktree()`. Setting `cmd.Env` replaces the default inherited environment, so `os.Environ()` is used as the base to preserve the caller's full environment. The variable is scoped to the child process only.
 
 ### `cmd/conductor-cli/init.go`
 
@@ -48,13 +48,14 @@ Update the setup script template to document the variable:
 #
 # Examples:
 #   npm install
+#   cp .env.example .env
 #   cp "$CONDUCTOR_MAIN_WORKTREE/.env" ./
 #   make setup
 ```
 
 ### `cmd/conductor-cli/commands_test.go`
 
-Add a test that verifies the variable reaches the setup script. The script writes `$CONDUCTOR_MAIN_WORKTREE` to a file; the test asserts the file contains the expected main worktree path.
+Add a test that verifies the variable reaches the setup script. The script writes `$CONDUCTOR_MAIN_WORKTREE` to a file; the test asserts the file contains the expected main worktree path. Path assertions must use `resolveSymlinks()` to handle macOS `/var` vs `/private/var` differences, consistent with existing tests.
 
 ## Behavior
 
