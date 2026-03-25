@@ -75,6 +75,7 @@ func (c *CreateCommand) execute(dir, branchName string) (string, error) {
 		}
 		cmd := exec.Command(shell, "-li", wtSetupScript)
 		cmd.Dir = wtPath
+		cmd.Env = append(os.Environ(), "CONDUCTOR_MAIN_WORKTREE="+repoRoot)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {

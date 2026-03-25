@@ -348,6 +348,36 @@ func TestCreateCommandSetupScriptFails(t *testing.T) {
 	}
 }
 
+func TestCreateCommandSetupScriptReceivesMainWorktreeEnv(t *testing.T) {
+	withConfig(t)
+	repo := setupTestRepo(t)
+
+	initCmd := &InitCommand{}
+	if err := initCmd.execute(repo); err != nil {
+		t.Fatalf("init failed: %v", err)
+	}
+
+	setupScript := filepath.Join(repo, ".conductor-cli", "setup")
+	os.WriteFile(setupScript, []byte("#!/bin/sh\necho \"$CONDUCTOR_MAIN_WORKTREE\" > main-worktree-path\n"), 0755)
+
+	createCmd := &CreateCommand{}
+	wtPath, err := createCmd.execute(repo, "env-test")
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	content, err := os.ReadFile(filepath.Join(wtPath, "main-worktree-path"))
+	if err != nil {
+		t.Fatalf("setup script did not write main-worktree-path file: %v", err)
+	}
+
+	got := strings.TrimSpace(string(content))
+	want := resolveSymlinks(repo)
+	if got != want {
+		t.Errorf("CONDUCTOR_MAIN_WORKTREE = %q, want %q", got, want)
+	}
+}
+
 func TestListCommand(t *testing.T) {
 	withConfig(t)
 	repo := setupTestRepo(t)
