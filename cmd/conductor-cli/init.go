@@ -67,9 +67,13 @@ func (c *InitCommand) execute(dir string) error {
 # This script runs automatically after creating a new worktree.
 # Working directory is set to the new worktree root.
 #
+# Available environment variables:
+#   CONDUCTOR_MAIN_WORKTREE — absolute path to the main worktree
+#
 # Examples:
 #   npm install
 #   cp .env.example .env
+#   cp "$CONDUCTOR_MAIN_WORKTREE/.env" ./
 #   make setup
 `
 		if err := os.WriteFile(setupScript, []byte(template), 0755); err != nil {
