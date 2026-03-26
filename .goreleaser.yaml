@@ -1,0 +1,29 @@
+version: 2
+
+builds:
+  - main: ./cmd/conductor-cli/
+    binary: conductor-cli
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: linux
+        goarch: arm64
+
+archives:
+  - formats:
+      - tar.gz
+    name_template: "conductor-cli_{{ .Os }}_{{ .Arch }}"
+    files:
+      - README.md
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
