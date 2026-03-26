@@ -8,6 +8,8 @@ import (
 	"github.com/jessevdk/go-flags"
 )
 
+var version = "dev"
+
 // configPath is the path to the global config file.
 // Defaults to ~/.conductor-cli/config.json, overridable via CONDUCTOR_CONFIG env var.
 // Tests override this directly.
