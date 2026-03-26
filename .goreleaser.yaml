@@ -27,3 +27,12 @@ checksum:
 
 changelog:
   sort: asc
+
+brews:
+  - repository:
+      owner: pandamako
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    directory: Formula
+    homepage: "https://github.com/pandamako/conductor-cli"
+    description: "CLI tool for managing git worktrees across projects"
