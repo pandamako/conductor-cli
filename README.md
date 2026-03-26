@@ -4,11 +4,21 @@ CLI tool for managing git worktrees across projects.
 
 ## Installation
 
+### Homebrew (macOS/Linux)
+
 ```bash
-go install ./cmd/conductor-cli/
+brew install pandamako/tap/conductor-cli
 ```
 
-Бинарник будет установлен в `$GOPATH/bin` (или `$HOME/go/bin`). Убедитесь, что эта директория добавлена в `$PATH`.
+### From source
+
+```bash
+go install github.com/pandamako/conductor-cli/cmd/conductor-cli@latest
+```
+
+### Binary releases
+
+Download pre-built binaries from the [Releases](https://github.com/pandamako/conductor-cli/releases) page.
 
 ## Commands
 
